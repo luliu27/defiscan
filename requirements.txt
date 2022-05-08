@@ -1,0 +1,5 @@
+absl_py==1.0.0
+etherscan-python==2.1.0
+pandas==1.4.2
+requests==2.27.1
+web3==5.29.0

@@ -1,0 +1,9 @@
+{
+  "eth": {
+    "etherscan": "API_KEY",
+    "infura": "PROJECT_ID"
+  },
+  "ftm": {
+    "ftmscan": "API_KEY"
+  }
+}
