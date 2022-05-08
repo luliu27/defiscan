@@ -27,7 +27,7 @@ source venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 
-## Untilities
+## Utilities
 
 ```bash
 # set up config.json and update API keys in the file
