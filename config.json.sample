@@ -5,5 +5,8 @@
   },
   "ftm": {
     "ftmscan": "API_KEY"
+  },
+  "polygon": {
+    "polygonscan": "API_KEY"
   }
 }
