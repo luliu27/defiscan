@@ -12,16 +12,17 @@ flags.DEFINE_spaceseplist("chains", "eth,ftm", "A list of chains to track", comm
 flags.DEFINE_integer("interval", 5, "interval between requests", lower_bound=1)
 
 config = json.load(open("config.json", "r"))
-eth_gas_ep = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=" + config["eth"]["etherscan"]
-ftm_gas_ep = "https://api.ftmscan.com/api?module=gastracker&action=gasoracle&apikey=" + config["ftm"]["ftmscan"]
-poly_gas_ep = (
-    "https://api.polygonscan.com/api?module=gastracker&action=gasoracle&apikey=" + config["polygon"]["polygonscan"]
-)
+chain_eps = {
+    "eth": "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=" + config["eth"]["etherscan"],
+    "ftm": "https://api.ftmscan.com/api?module=gastracker&action=gasoracle&apikey=" + config["ftm"]["ftmscan"],
+    "polygon": "https://api.polygonscan.com/api?module=gastracker&action=gasoracle&apikey="
+    + config["polygon"]["polygonscan"],
+}
 
 
-def track_L1_gas(chain, ep):
+def track_L1_gas(chain):
     try:
-        resp = requests.get(ep)
+        resp = requests.get(chain_eps[chain])
         if resp.status_code != 200:
             logging.warning("{} gas tracker endpoint failure".format(chain))
             return None
@@ -51,15 +52,15 @@ def main(_):
     while True:
         gas = []
         if "eth" in chains:
-            eth_gas = track_L1_gas("eth", eth_gas_ep)
+            eth_gas = track_L1_gas("eth")
             if eth_gas != None:
                 gas.append(eth_gas)
         if "ftm" in chains:
-            ftm_gas = track_L1_gas("ftm", ftm_gas_ep)
+            ftm_gas = track_L1_gas("ftm")
             if ftm_gas != None:
                 gas.append(ftm_gas)
         if "polygon" in chains:
-            matic_gas = track_L1_gas("matic", poly_gas_ep)
+            matic_gas = track_L1_gas("polygon")
             if matic_gas != None:
                 gas.append(matic_gas)
         df = pandas.DataFrame.from_records(data=gas)
