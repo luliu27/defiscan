@@ -1,10 +1,11 @@
+import asyncio
 import json
 import logging
 from datetime import datetime
 from time import sleep
 
+import aiohttp
 import pandas
-import requests
 from absl import app, flags
 
 FLAGS = flags.FLAGS
@@ -20,25 +21,31 @@ chain_eps = {
 }
 
 
-def track_L1_gas(chain):
-    try:
-        resp = requests.get(chain_eps[chain])
-        if resp.status_code != 200:
-            logging.warning("{} gas tracker endpoint failure".format(chain))
-            return None
-        gas = json.loads(resp.text)["result"]
-        return {
-            "chain": chain,
-            "block": int(gas["LastBlock"]),
-            "safe": gas["SafeGasPrice"],
-            "fast": gas["FastGasPrice"],
-            "propose": gas["ProposeGasPrice"],
-            "baseFee": gas["suggestBaseFee"] if "suggestBaseFee" in gas else "0.0",
-            "ts": datetime.now().isoformat(timespec="seconds"),
-        }
-    except Exception as e:
-        logging.warning("{} api error: {}".format(chain, e))
+async def track_l1_gas(session: aiohttp.ClientSession, chain: str, **kwargs) -> dict:
+    resp = await session.request("GET", url=chain_eps[chain], **kwargs)
+    if resp.status != 200:
+        logging.warning("{} gas tracker EP failure".format(chain))
         return None
+    data = await resp.json()
+    gas = data["result"]
+    return {
+        "chain": chain,
+        "block": int(gas["LastBlock"]),
+        "safe": gas["SafeGasPrice"],
+        "fast": gas["FastGasPrice"],
+        "propose": gas["ProposeGasPrice"],
+        "baseFee": gas["suggestBaseFee"] if "suggestBaseFee" in gas else "0.0",
+        "ts": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+async def track(chains, **kwargs):
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for chain in chains:
+            tasks.append(track_l1_gas(session=session, chain=chain, **kwargs))
+        gas = await asyncio.gather(*tasks, return_exceptions=False)
+        return gas
 
 
 def main(_):
@@ -50,19 +57,8 @@ def main(_):
         exit
 
     while True:
-        gas = []
-        if "eth" in chains:
-            eth_gas = track_L1_gas("eth")
-            if eth_gas != None:
-                gas.append(eth_gas)
-        if "ftm" in chains:
-            ftm_gas = track_L1_gas("ftm")
-            if ftm_gas != None:
-                gas.append(ftm_gas)
-        if "polygon" in chains:
-            matic_gas = track_L1_gas("polygon")
-            if matic_gas != None:
-                gas.append(matic_gas)
+        results = asyncio.run(track(chains))
+        gas = list(filter(None, results))
         df = pandas.DataFrame.from_records(data=gas)
         print(df)
         sleep(interval)
